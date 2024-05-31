@@ -1,0 +1,126 @@
+free c:channel.
+type G.
+type exponent.
+
+const g:G [data].
+free T:bitstring.
+free Suc:bitstring [private].
+
+fun exp(G,exponent):G. 
+equation forall x:exponent,y:exponent;
+exp(exp(g,x),y)=exp(exp(g,y),x).
+fun minus(bitstring,bitstring):bitstring.
+fun add(bitstring,bitstring):bitstring.
+fun multi1(bitstring,bitstring):bitstring.
+fun multi2(G,G):G.
+fun inver(exponent):exponent.
+fun senc(bitstring,bitstring):bitstring.
+reduc forall m:bitstring,k:bitstring;
+sdec(senc(m,k),k)=m.
+fun con(bitstring,bitstring):bitstring.
+reduc forall m:bitstring,n:bitstring;
+lde(con(m,n))=m.
+reduc forall m:bitstring,n:bitstring;
+rde(con(m,n))=n.
+fun h(bitstring):bitstring.
+fun xor(bitstring,bitstring):bitstring.
+reduc forall m:bitstring,n:bitstring;
+rxor(xor(m,n))=n. 
+fun PUF(bitstring):bitstring.
+fun Rec(bitstring,bitstring):bitstring.
+fun G_to_BS(G):bitstring [typeConverter].
+fun BS_to_G(bitstring):G [typeConverter].
+fun Exp_to_BS(exponent):bitstring [typeConverter].
+fun BS_to_Exp(bitstring):exponent [typeConverter].
+fun G_to_Exp(G):exponent [typeConverter].
+
+event acc1().
+event acc2().
+event acc3().
+event acc4().
+event acc5().
+query secret SKir.
+query secret SKri.
+query secret PKr.
+query secret PKi.
+query secret n.
+query secret ski.
+query secret skr.
+query secret Sr.
+query secret NewSKir.
+query secret NewSKri.
+query secret Rnew.
+query event(acc1())==>event(acc3()).
+query event(acc4())==>event(acc1()).
+query event(acc5())==>event(acc4()).
+query event(acc2())==>event(acc5()).
+
+let Vehiclei(PKi:G,ski:bitstring,PKr:G,Suc:bitstring)=
+new n:bitstring;
+new TS1:bitstring;
+new Raka:bitstring;
+let C1=xor(G_to_BS(exp(PKr,BS_to_Exp(n))),Raka) in
+let C2=h(con(C1,con(G_to_BS(exp(g,BS_to_Exp(n))),con(Raka,G_to_BS(PKr))))) in
+let C3=minus(n,multi1(add(ski,Raka),C2)) in
+let Data1=BS_to_Exp(add(ski,Raka)) in
+let AD=exp(g,Data1) in
+out(c,(C1,C2,C3,AD));
+in(c,(EN:bitstring,TS2:bitstring));
+new tTS2:bitstring;
+let SKir=h(con(Raka,con(G_to_BS(exp(PKr,BS_to_Exp(ski))),TS1))) in
+let DE=sdec(EN,SKir) in
+let tSuc=rde(DE) in
+if(tSuc=Suc) then event acc1();
+let U0=lde(DE) in 
+let Kr=exp(PKr,BS_to_Exp(Raka)) in
+
+new Rnew:bitstring;
+new TS3:bitstring;
+let N1=xor(h(con(G_to_BS(exp(Kr,BS_to_Exp(ski))),TS3)),Rnew) in
+let Auth1=h(con(G_to_BS(exp(Kr,BS_to_Exp(ski))),Rnew)) in
+out(c,(N1,Auth1,U0,TS3));
+in(c,(EN2:bitstring,TS4:bitstring));
+let NewSKir=h(con(Rnew,con(G_to_BS(exp(PKr,BS_to_Exp(ski))),TS3))) in
+let NewDE=sdec(EN2,NewSKir) in
+let tNewSuc=rde(NewDE) in
+if(tNewSuc=Suc) then event acc2();
+let U1=lde(NewDE) in
+let NewKr=exp(PKr,BS_to_Exp(Rnew)) in 0.
+
+let RSU(skr:bitstring,PKr:G,Suc:bitstring)=
+in(c,(C1:bitstring,C2:bitstring,C3:bitstring,AD:G,TS1:bitstring));
+new tTS1:bitstring;
+let r=multi2(exp(g,BS_to_Exp(C3)),exp(AD,BS_to_Exp(C2))) in
+let tRaka=xor(G_to_BS(exp(r,BS_to_Exp(skr))),C1) in
+let tPKi=multi2(exp(g,G_to_Exp(AD)),exp(g,inver(BS_to_Exp(tRaka)))) in
+let tC2=h(con(C1,con(G_to_BS(r),con(tRaka,G_to_BS(tPKi))))) in
+if (C2=tC2) then event acc3();
+new u0:bitstring;
+new TS2:bitstring;
+let SKri=h(con(tRaka,con(G_to_BS(exp(tPKi,BS_to_Exp(skr))),TS1))) in
+let EN=senc(con(u0,Suc),SKri) in
+out(c,(EN,TS2));
+let Ki=exp(tPKi,BS_to_Exp(tRaka)) in
+
+in(c,(N1:bitstring,U0:bitstring,Auth1:bitstring,TS3:bitstring));
+if(U0=u0) then event acc4();
+let tRnew=xor(N1,h(con(G_to_BS(exp(Ki,BS_to_Exp(skr))),TS3))) in
+let Auth2=h(con(G_to_BS(exp(Ki,BS_to_Exp(skr))),tRnew)) in
+if(Auth2=Auth1) then event acc5();
+new u1:bitstring;
+new TS4:bitstring;
+let NewSKri=h(con(tRnew,con(G_to_BS(exp(tPKi,BS_to_Exp(skr))),TS3))) in
+let EN2=senc(con(u1,Suc),NewSKri) in
+out(c,(EN2,TS4));
+let NewKi=exp(tPKi,BS_to_Exp(tRnew)) in 0.
+
+process
+new ski:bitstring;
+new Cr:bitstring;
+new hd:bitstring;
+let R=PUF(Cr) in
+let Sr=Rec(R,hd) in
+let skr=h(Sr) in
+let PKi=exp(g,BS_to_Exp(ski)) in
+let PKr=exp(g,BS_to_Exp(skr)) in
+(!Vehiclei(PKi,ski,PKr,Suc)|!RSU(skr,PKr,Suc))
